@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -18,6 +19,7 @@ import {
 } from "../../components/ui/avatar";
 
 function Companies() {
+  const navigate = useNavigate();
   const [companies, setCompanies] = React.useState<any[]>([]);
 
   const tailwindBgColors = [
@@ -140,7 +142,15 @@ function Companies() {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full"
-                onClick={() => handleViewCompany(company)}
+                onClick={() => {
+                  // Navigate to company details page if companyId exists
+                  if (company.companyId) {
+                    navigate(`/company/${company.companyId}`);
+                  } else {
+                    // Fallback to modal for employers not yet migrated
+                    handleViewCompany(company);
+                  }
+                }}
               >
                 View Company
               </Button>

@@ -148,4 +148,59 @@ router.post(
   deleteEmployerAccountPermanently
 );
 
+// Bookmark candidate endpoints
+router.post("/:id/bookmark", authenticateToken, async (req, res) => {
+  try {
+    const employerId = req.user.userId;
+    const { candidateId } = req.body;
+    
+    const Employer = require("../../model/employer/employer.model");
+    const employer = await Employer.findById(employerId);
+    
+    if (!employer) {
+      return res.status(404).json({ success: false, message: "Employer not found" });
+    }
+    
+    if (!employer.bookmarkedCandidates.includes(candidateId)) {
+      employer.bookmarkedCandidates.push(candidateId);
+      await employer.save();
+    }
+    
+    res.status(200).json({ 
+      success: true, 
+      message: "Candidate bookmarked successfully",
+      bookmarkedCandidates: employer.bookmarkedCandidates 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete("/:id/bookmark", authenticateToken, async (req, res) => {
+  try {
+    const employerId = req.user.userId;
+    const { candidateId } = req.body;
+    
+    const Employer = require("../../model/employer/employer.model");
+    const employer = await Employer.findById(employerId);
+    
+    if (!employer) {
+      return res.status(404).json({ success: false, message: "Employer not found" });
+    }
+    
+    employer.bookmarkedCandidates = employer.bookmarkedCandidates.filter(
+      id => id.toString() !== candidateId.toString()
+    );
+    await employer.save();
+    
+    res.status(200).json({ 
+      success: true, 
+      message: "Candidate bookmark removed",
+      bookmarkedCandidates: employer.bookmarkedCandidates 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
