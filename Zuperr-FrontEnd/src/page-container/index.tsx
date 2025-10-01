@@ -29,6 +29,7 @@ const EmployeeJobs = lazy(() => import("../pages/jobs"));
 const JobDetails = lazy(() => import("../pages/job-analytics/JobDetails"));
 const CreateResume = lazy(() => import("../pages/create-resume"));
 const Companies = lazy(() => import("../pages/company"));
+const CompanyDetails = lazy(() => import("../pages/company/CompanyDetails"));
 const Profile = lazy(() => import("../pages/profile"));
 const JobPost = lazy(() => import("../pages/job-analytics/JobPost"));
 const Candidates = lazy(() => import("../pages/candidates"));
@@ -88,6 +89,7 @@ const PageContainer: React.FC = () => {
                 <Route path="/" element={<Navigate to="/jobs" replace />} />
                 <Route path="/jobs" element={<EmployeeJobs />} />
                 <Route path="/companies" element={<Companies />} />
+                <Route path="/company/:id" element={<CompanyDetails />} />
                 <Route path="/create-resume" element={<CreateResume />} />
                 <Route
                   path="/analytics"
