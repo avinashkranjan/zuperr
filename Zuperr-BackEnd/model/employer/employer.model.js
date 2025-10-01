@@ -3,6 +3,25 @@ const bcrypt = require("bcryptjs");
 
 const employerSchema = new mongoose.Schema(
   {
+    // Link to Company model (null for backward compatibility)
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+    // Role within company (for multi-user support)
+    role: {
+      type: String,
+      enum: ["admin", "member"],
+      default: "admin",
+    },
+    // Bookmarked candidates
+    bookmarkedCandidates: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
+    
     firstname: {
       type: String,
       required: true,

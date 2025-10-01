@@ -14,6 +14,9 @@ const dashboadRoutes = require("./routes/dashboard/employer.dashboard");
 const employeerRoutes = require("./routes/employer/employer.routes");
 const notificationRoutes = require("./routes/employer/notification.routes");
 const candidateRoutes = require("./routes/candidate/candidate.route");
+const companyRoutes = require("./routes/company/company.routes");
+const commentRoutes = require("./routes/comment/comment.routes");
+const mailRoutes = require("./routes/mail/mail.routes");
 const { connectToDb } = require("./config/config");
 const { passport } = require("./config/config");
 
@@ -75,6 +78,9 @@ app.use("/api/employee", employeeroutes);
 app.use("/api/employer", employeerRoutes);
 app.use("/api/employer/notification", notificationRoutes);
 app.use("/api/candidate", candidateRoutes);
+app.use("/api/company", companyRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/mail", mailRoutes);
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, "public", "build")));
