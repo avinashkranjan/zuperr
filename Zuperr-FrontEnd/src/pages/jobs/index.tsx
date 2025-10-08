@@ -9,6 +9,7 @@ import { useToast } from "@src/hooks/use-toast";
 import JobSidebar from "../../components/JobSidebar";
 import JobModal from "./job-modal";
 import Categories from "./categories";
+import JobRecommendations from "../../components/JobRecommendations";
 import {
   Select,
   SelectContent,
@@ -294,6 +295,11 @@ const Jobs: React.FC = () => {
           />
           <main className="lg:col-span-3">
             <Categories categories={categories} />
+
+            {/* Personalized Job Recommendations */}
+            <div className="mt-6">
+              <JobRecommendations onJobClick={handleCardClick} />
+            </div>
 
             <section className="mt-6">
               <div className="flex justify-between items-center">

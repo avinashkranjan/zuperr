@@ -1242,6 +1242,239 @@ const updateCandidateProfileVisibility = async(req, res)=> {
     }
 }
 
+// Get personalized job recommendations based on user profile
+const getJobRecommendations = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const user = await User.findById(userId).populate("keySkills");
+        
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Build match criteria based on user profile
+        const matchCriteria = {
+            isDeleted: false,
+            isActive: true,
+            status: "approved",
+            // Exclude jobs user has already applied to
+            "applicants.id": { $ne: new mongoose.Types.ObjectId(userId) }
+        };
+
+        // Match experience level
+        if (user.userExperienceLevel) {
+            matchCriteria.jobExperienceLevelType = user.userExperienceLevel;
+        }
+
+        // Match job categories if user has selected preferences
+        if (user.selectedJobCategories?.length > 0) {
+            matchCriteria.jobCategory = { $in: user.selectedJobCategories };
+        }
+
+        // Match skills
+        const userSkillIds = user.keySkills?.map(skill => skill._id) || [];
+
+        const recommendations = await Job.aggregate([
+            { $match: matchCriteria },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "skills",
+                    foreignField: "_id",
+                    as: "skillDetails"
+                }
+            },
+            {
+                $lookup: {
+                    from: "employers",
+                    localField: "createdBy",
+                    foreignField: "_id",
+                    as: "employer"
+                }
+            },
+            { $unwind: { path: "$employer", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    // Calculate match score based on skills overlap
+                    skillMatchCount: {
+                        $size: {
+                            $filter: {
+                                input: "$skills",
+                                as: "jobSkill",
+                                cond: { $in: ["$$jobSkill", userSkillIds] }
+                            }
+                        }
+                    },
+                    companyName: "$employer.companyName",
+                    companyLogo: "$employer.companyLogo"
+                }
+            },
+            { $sort: { skillMatchCount: -1, createdAt: -1 } },
+            { $limit: 10 },
+            {
+                $project: {
+                    employer: 0,
+                    applicants: 0,
+                    "skillDetails.createdAt": 0,
+                    "skillDetails.updatedAt": 0,
+                    "skillDetails.__v": 0,
+                    __v: 0
+                }
+            }
+        ]);
+
+        return res.status(200).json({ 
+            success: true,
+            recommendations,
+            count: recommendations.length 
+        });
+    } catch (error) {
+        console.error("getJobRecommendations:", error);
+        return res.status(500).json({ 
+            message: "Something went wrong", 
+            error: error.message 
+        });
+    }
+}
+
+// Get similar jobs based on a specific job
+const getSimilarJobs = async (req, res) => {
+    try {
+        const { jobId } = req.params;
+        const userId = req.user?.userId;
+
+        if (!mongoose.Types.ObjectId.isValid(jobId)) {
+            return res.status(400).json({ message: "Invalid job ID" });
+        }
+
+        const referenceJob = await Job.findById(jobId);
+        if (!referenceJob) {
+            return res.status(404).json({ message: "Job not found" });
+        }
+
+        // Build match criteria for similar jobs
+        const matchCriteria = {
+            _id: { $ne: new mongoose.Types.ObjectId(jobId) },
+            isDeleted: false,
+            isActive: true,
+            status: "approved",
+            $or: [
+                { jobCategory: referenceJob.jobCategory },
+                { skills: { $in: referenceJob.skills } },
+                { location: referenceJob.location }
+            ]
+        };
+
+        // Exclude jobs user has already applied to (if userId provided)
+        if (userId) {
+            matchCriteria["applicants.id"] = { $ne: new mongoose.Types.ObjectId(userId) };
+        }
+
+        const similarJobs = await Job.aggregate([
+            { $match: matchCriteria },
+            {
+                $lookup: {
+                    from: "skills",
+                    localField: "skills",
+                    foreignField: "_id",
+                    as: "skillDetails"
+                }
+            },
+            {
+                $lookup: {
+                    from: "employers",
+                    localField: "createdBy",
+                    foreignField: "_id",
+                    as: "employer"
+                }
+            },
+            { $unwind: { path: "$employer", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    // Calculate similarity score
+                    categoryMatch: { $cond: [{ $eq: ["$jobCategory", referenceJob.jobCategory] }, 3, 0] },
+                    skillMatchCount: {
+                        $size: {
+                            $setIntersection: ["$skills", referenceJob.skills]
+                        }
+                    },
+                    locationMatch: { $cond: [{ $eq: ["$location", referenceJob.location] }, 2, 0] },
+                    companyName: "$employer.companyName",
+                    companyLogo: "$employer.companyLogo"
+                }
+            },
+            {
+                $addFields: {
+                    similarityScore: { 
+                        $add: ["$categoryMatch", "$skillMatchCount", "$locationMatch"] 
+                    }
+                }
+            },
+            { $match: { similarityScore: { $gt: 0 } } },
+            { $sort: { similarityScore: -1, createdAt: -1 } },
+            { $limit: 6 },
+            {
+                $project: {
+                    employer: 0,
+                    applicants: 0,
+                    categoryMatch: 0,
+                    locationMatch: 0,
+                    "skillDetails.createdAt": 0,
+                    "skillDetails.updatedAt": 0,
+                    "skillDetails.__v": 0,
+                    __v: 0
+                }
+            }
+        ]);
+
+        return res.status(200).json({ 
+            success: true,
+            similarJobs,
+            count: similarJobs.length 
+        });
+    } catch (error) {
+        console.error("getSimilarJobs:", error);
+        return res.status(500).json({ 
+            message: "Something went wrong", 
+            error: error.message 
+        });
+    }
+}
+
+// Track job sharing
+const shareJob = async (req, res) => {
+    try {
+        const { jobId, platform } = req.body;
+        const userId = req.user?.userId;
+
+        if (!mongoose.Types.ObjectId.isValid(jobId)) {
+            return res.status(400).json({ message: "Invalid job ID" });
+        }
+
+        const job = await Job.findById(jobId);
+        if (!job) {
+            return res.status(404).json({ message: "Job not found" });
+        }
+
+        // Track the share event (you can extend the Job model to include share count)
+        // For now, we'll just return success
+        // In a production app, you might want to store share analytics
+
+        return res.status(200).json({ 
+            success: true,
+            message: "Job shared successfully",
+            jobId,
+            platform: platform || "unknown"
+        });
+    } catch (error) {
+        console.error("shareJob:", error);
+        return res.status(500).json({ 
+            message: "Something went wrong", 
+            error: error.message 
+        });
+    }
+}
+
 module.exports = {
   signUp,
   signIn,
@@ -1273,5 +1506,8 @@ module.exports = {
   saveUserJob,
   getUserSavedJobs,
   getUserAppliedJobs,
-  updateCandidateProfileVisibility
+  updateCandidateProfileVisibility,
+  getJobRecommendations,
+  getSimilarJobs,
+  shareJob
 };

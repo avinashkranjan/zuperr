@@ -17,6 +17,8 @@ import {
 import { get, post } from "@api/index";
 import { useToast } from "@src/hooks/use-toast";
 import { Link } from "react-router-dom";
+import JobShareButton from "../../components/JobShareButton";
+import SimilarJobs from "../../components/SimilarJobs";
 
 const JobModal = ({
   job,
@@ -376,6 +378,12 @@ const JobModal = ({
           >
             {isBookmarked ? "Bookmarked" : "Bookmark"}
           </Button>
+          <JobShareButton 
+            jobId={job._id} 
+            jobTitle={job.title} 
+            companyName={job.companyName}
+            variant="outline"
+          />
           <Button
             onClick={handleApplyClick}
             className="bg-blue-600 text-white rounded-full px-6 py-2 hover:bg-blue-700"
@@ -383,6 +391,9 @@ const JobModal = ({
             Apply
           </Button>
         </div>
+
+        {/* Similar Jobs Section */}
+        <SimilarJobs jobId={job._id} onJobClick={onClose} />
       </div>
     </div>
   );
