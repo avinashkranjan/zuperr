@@ -28,7 +28,10 @@ const {
   saveUserJob,
   getUserSavedJobs,
   getUserAppliedJobs,
-  updateCandidateProfileVisibility
+  updateCandidateProfileVisibility,
+  getJobRecommendations,
+  getSimilarJobs,
+  shareJob
 } = require("../../controller/employee/employee.controller");
 const {
   resendOtpCode,
@@ -127,5 +130,10 @@ router.post("/savejob", authenticateToken, saveUserJob);
 router.post("/getusersavedjobs", authenticateToken, getUserSavedJobs);
 router.post("/getuserappliedjobs", authenticateToken, getUserAppliedJobs);
 router.post("/updatecandidateprofilevisibility", authenticateToken, updateCandidateProfileVisibility);
+
+// Job recommendation and sharing routes
+router.get("/jobs/recommendations", authenticateToken, getJobRecommendations);
+router.get("/jobs/similar/:jobId", getSimilarJobs);
+router.post("/jobs/share", shareJob);
 
 module.exports = router;
